@@ -19,18 +19,18 @@
   const map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/dark-v11",
-    center: [-99.1332, 19.4326], // CDMX como centro inicial
+    center: [-99.1332, 19.4326], // CDMX
     zoom: 5
   });
 
   map.on("load", () => {
-    // Cargar datos dinámicos desde tu Web App (GeoJSON)
+    // 🔹 Cargar datos desde tu script de Google Apps
     map.addSource("clientes", {
       type: "geojson",
-      data: "https://script.google.com/macros/s/AKfycbwuYuxb2EXmaJGUc3Ji3iIQmub6dh0RJsJPjwnKL8xx4U1SV6DAKYxJCiN1L8k5KQ/exec" // tu doGet que devuelve GeoJSON
+      data: "https://script.google.com/macros/s/AKfycbwuYuxb2EXmaJGUc3Ji3iIQmub6dh0RJsJPjwnKL8xx4U1SV6DAKYxJCiN1L8k5KQ/exec"
     });
 
-    // Capa heatmap
+    // 🔹 Capa de calor
     map.addLayer({
       id: "clientes-heat",
       type: "heatmap",
@@ -41,6 +41,39 @@
         "heatmap-radius": 20,
         "heatmap-opacity": 0.8
       }
+    });
+
+    // 🔹 Capa de puntos (invisible por zoom)
+    map.addLayer({
+      id: "clientes-points",
+      type: "circle",
+      source: "clientes",
+      minzoom: 5,
+      paint: {
+        "circle-radius": 6,
+        "circle-color": "#00ffff",
+        "circle-opacity": 0.0 // 0 para no estorbar visualmente
+      }
+    });
+
+    // 🔹 Popup al hacer clic en un punto
+    map.on("click", "clientes-points", (e) => {
+      const props = e.features[0].properties;
+      const nombre = props.nombre || "Cliente sin nombre";
+      const direccion = props.domicilio || "Sin dirección";
+
+      new mapboxgl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>${nombre}</strong><br>${direccion}`)
+        .addTo(map);
+    });
+
+    // 🔹 Cambiar cursor al pasar sobre un punto
+    map.on("mouseenter", "clientes-points", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "clientes-points", () => {
+      map.getCanvas().style.cursor = "";
     });
   });
 </script>
