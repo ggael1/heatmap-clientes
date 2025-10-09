@@ -19,16 +19,25 @@
   const map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/dark-v11",
-    center: [-99.1332, 19.4326], // CDMX como punto de partida
+    center: [-99.1332, 19.4326], // CDMX
     zoom: 5
   });
 
-  map.on("load", () => {
-    // 🔹 Fuente de datos (tu endpoint de Google Apps Script)
-    map.addSource("clientes", {
-      type: "geojson",
-      data: "https://script.google.com/macros/s/AKfycbwuYuxb2EXmaJGUc3Ji3iIQmub6dh0RJsJPjwnKL8xx4U1SV6DAKYxJCiN1L8k5KQ/exec"
+  map.on("load", async () => {
+    // 🔹 Cargar datos dinámicos desde tu Apps Script
+    const response = await fetch("https://script.google.com/macros/s/AKfycbwuYuxb2EXmaJGUc3Ji3iIQmub6dh0RJsJPjwnKL8xx4U1SV6DAKYxJCiN1L8k5KQ/exec");
+    let data = await response.json();
+
+    // 🔹 Verificar y corregir propiedades si vienen como string JSON
+    data.features = data.features.map(f => {
+      if (typeof f.properties === "string") {
+        try { f.properties = JSON.parse(f.properties); } catch(e) {}
+      }
+      return f;
     });
+
+    // 🔹 Agregar fuente
+    map.addSource("clientes", { type: "geojson", data });
 
     // 🔹 Capa de calor
     map.addLayer({
@@ -39,28 +48,30 @@
         "heatmap-weight": 1,
         "heatmap-intensity": 1,
         "heatmap-radius": 20,
-        "heatmap-opacity": 0.8
+        "heatmap-opacity": 0.7
       }
     });
 
-    // 🔹 Capa de puntos (invisible visualmente pero clickeable)
+    // 🔹 Capa de puntos visibles
     map.addLayer({
       id: "clientes-points",
       type: "circle",
       source: "clientes",
-      minzoom: 5,
+      minzoom: 6,
       paint: {
-        "circle-radius": 8,
+        "circle-radius": 6,
         "circle-color": "#00ffff",
-        "circle-opacity": 0
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#fff",
+        "circle-opacity": 0.8
       }
     });
 
-    // 🔹 Popup al hacer clic en un punto
+    // 🔹 Popups al hacer clic
     map.on("click", "clientes-points", (e) => {
       const props = e.features[0].properties;
-      const cliente = props.cliente || "Cliente desconocido";
-      const direccion = props.direccion || "Sin dirección registrada";
+      const cliente = props.cliente || "Cliente sin nombre";
+      const direccion = props.direccion || "Sin dirección";
 
       new mapboxgl.Popup()
         .setLngLat(e.lngLat)
@@ -68,7 +79,7 @@
         .addTo(map);
     });
 
-    // 🔹 Cambiar cursor al pasar sobre un punto
+    // 🔹 Cursor tipo mano
     map.on("mouseenter", "clientes-points", () => {
       map.getCanvas().style.cursor = "pointer";
     });
